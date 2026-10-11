@@ -297,7 +297,11 @@ class DocumentAuthorizationService:
 
         if approver_dept != doc_dept:
             central_depts = {"records & compliance", "system administration", "general", "enterprise shared"}
-            if approver_dept not in central_depts and doc_dept not in central_depts:
+            if (
+                approver_dept not in central_depts
+                and doc_dept not in central_depts
+                and (not submitter or submitter.role != UserRole.ADMIN)
+            ):
                 return AccessDecision(
                     False,
                     f"Cross-department review is not permitted. Approver belongs to '{approver.department}', but document belongs to '{document.department}'"

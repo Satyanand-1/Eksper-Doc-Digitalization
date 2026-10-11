@@ -117,22 +117,24 @@ def get_eligible_approvers(
     )
 
     if target_department:
-        dept_approvers_count = db.query(User).filter(
-            User.is_active == True,
-            User.role == UserRole.APPROVER,
-            func.lower(User.department) == target_department.strip().lower(),
-            User.id != current_user.id
-        ).count()
-        if dept_approvers_count > 0:
-            query = query.filter(func.lower(User.department) == target_department.strip().lower())
+        target_norm = target_department.strip().lower()
+        central_depts = {"records & compliance", "system administration", "general", "enterprise shared"}
+
+        # Central department documents or admin users can assign any active approver in the organization
+        if target_norm in central_depts or current_user.role == UserRole.ADMIN:
+            query = query.filter(User.department.isnot(None), User.department != "")
         else:
-            central_depts = ["records & compliance", "system administration"]
-            query = query.filter(
-                or_(
-                    func.lower(User.department) == target_department.strip().lower(),
-                    func.lower(User.department).in_(central_depts)
-                )
-            )
+            dept_approvers_count = db.query(User).filter(
+                User.is_active == True,
+                User.role == UserRole.APPROVER,
+                func.lower(User.department) == target_norm,
+                User.id != current_user.id
+            ).count()
+            if dept_approvers_count > 0:
+                query = query.filter(func.lower(User.department) == target_norm)
+            else:
+                # If current department has no assigned approvers, allow any active approver in the organization
+                query = query.filter(User.department.isnot(None), User.department != "")
     else:
         # If no department resolved (e.g. admin without filter), ensure user has a non-null department
         query = query.filter(User.department.isnot(None), User.department != "")
