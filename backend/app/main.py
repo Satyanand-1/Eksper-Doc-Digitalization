@@ -65,6 +65,16 @@ app.include_router(retention_router)
 app.include_router(physical_files_router)
 app.include_router(storage_locations_router)
 
+@app.get("/", tags=["Root"])
+def root_status():
+    return {
+        "status": "online",
+        "service": "EDRMS Backend API",
+        "version": "0.1.0",
+        "docs_url": "/docs",
+        "health_check": "/api/v1/health",
+    }
+
 @app.get("/api/v1/health", tags=["Health"])
 def liveness_check():
     """
