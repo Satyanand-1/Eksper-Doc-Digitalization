@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.config import settings
-from app.database import Base
+from app.database import Base, normalize_database_url
 # Import models package to ensure all SQLAlchemy models register with Base.metadata
 import app.models
 
@@ -28,7 +28,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
-    return settings.DATABASE_URL
+    return normalize_database_url(settings.DATABASE_URL)
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.

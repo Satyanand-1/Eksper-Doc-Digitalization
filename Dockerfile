@@ -25,6 +25,8 @@ COPY backend/ .
 # Create storage root directory structure inside container
 RUN mkdir -p /var/edrms/storage/uploads /var/edrms/storage/temp
 
+RUN chmod +x start.sh
+
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "start.sh"]
