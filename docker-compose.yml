@@ -1,0 +1,121 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: edrms-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-edrms_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edrms_secure_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-edrms_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edrms_user} -d ${POSTGRES_DB:-edrms_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - edrms-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: edrms-backend
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://edrms_user:edrms_secure_dev_password@db:5432/edrms_db}
+      STORAGE_ROOT: ${STORAGE_ROOT:-/var/edrms/storage}
+      MAX_UPLOAD_SIZE_BYTES: ${MAX_UPLOAD_SIZE_BYTES:-26214400}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev_insecure_jwt_secret_key_change_in_production_min_32_bytes_len}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # Isolate storage outside web root; persistent across container restarts
+      - edrms_storage:/var/edrms/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - edrms-network
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: edrms-worker
+    command: ["python", "-m", "app.worker"]
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://edrms_user:edrms_secure_dev_password@db:5432/edrms_db}
+      STORAGE_ROOT: ${STORAGE_ROOT:-/var/edrms/storage}
+      MAX_UPLOAD_SIZE_BYTES: ${MAX_UPLOAD_SIZE_BYTES:-26214400}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev_insecure_jwt_secret_key_change_in_production_min_32_bytes_len}
+      OCR_WORKER_POLL_INTERVAL_SECONDS: ${OCR_WORKER_POLL_INTERVAL_SECONDS:-2.0}
+      OCR_WORKER_LEASE_SECONDS: ${OCR_WORKER_LEASE_SECONDS:-60}
+      OCR_WORKER_MAX_ATTEMPTS: ${OCR_WORKER_MAX_ATTEMPTS:-3}
+      OCR_WORKER_BASE_RETRY_DELAY_SECONDS: ${OCR_WORKER_BASE_RETRY_DELAY_SECONDS:-5}
+    volumes:
+      - edrms_storage:/var/edrms/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import sys, time; from app.database import engine; from sqlalchemy import text; engine.connect().execute(text(\"SELECT 1\"))' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - edrms-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: edrms-frontend
+    restart: unless-stopped
+    environment:
+      PORT: ${FRONTEND_PORT:-3000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - edrms-network
+
+volumes:
+  postgres_data:
+    name: edrms_postgres_data
+  edrms_storage:
+    name: edrms_storage_data
+
+networks:
+  edrms-network:
+    name: edrms_network
+    driver: bridge
