@@ -82,7 +82,19 @@ import {
   PaginatedLocationTransfersResponse,
 } from "@/types/custody";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export function getDocumentPreviewUrl(documentId: string, versionNumber: number): string {
+  const token = getStoredToken();
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+  return `${API_BASE}/api/v1/documents/${documentId}/versions/${versionNumber}/preview${tokenParam}`;
+}
+
+export function getDocumentDownloadUrl(documentId: string, versionNumber: number): string {
+  const token = getStoredToken();
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+  return `${API_BASE}/api/v1/documents/${documentId}/versions/${versionNumber}/download${tokenParam}`;
+}
 
 export class ApiError extends Error {
   status: number;

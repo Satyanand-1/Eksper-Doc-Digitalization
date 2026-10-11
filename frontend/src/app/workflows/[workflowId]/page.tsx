@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificationContext } from "@/context/NotificationContext";
-import { api, ApiError, getStoredToken } from "@/lib/api";
+import { api, ApiError, getStoredToken, getDocumentPreviewUrl, getDocumentDownloadUrl } from "@/lib/api";
 import {
   WorkflowDetailResponse,
   WorkflowDecisionResponse,
@@ -383,7 +383,7 @@ export default function WorkflowReviewPage() {
                     <ExternalLink className="w-3.5 h-3.5" /> Full Record View
                   </Link>
                   <a
-                    href={`http://localhost:8000/api/v1/documents/${workflow.document_id}/versions/${workflow.document.current_version.version_number}/preview${getStoredToken() ? `?token=${encodeURIComponent(getStoredToken()!)}` : ""}`}
+                    href={getDocumentPreviewUrl(workflow.document_id, workflow.document.current_version.version_number)}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors shadow-2xs"
@@ -392,7 +392,7 @@ export default function WorkflowReviewPage() {
                     <Eye className="w-3.5 h-3.5 text-slate-500" /> Preview
                   </a>
                   <a
-                    href={`http://localhost:8000/api/v1/documents/${workflow.document_id}/versions/${workflow.document.current_version.version_number}/download${getStoredToken() ? `?token=${encodeURIComponent(getStoredToken()!)}` : ""}`}
+                    href={getDocumentDownloadUrl(workflow.document_id, workflow.document.current_version.version_number)}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors shadow-2xs"
