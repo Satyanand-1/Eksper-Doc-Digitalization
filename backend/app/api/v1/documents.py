@@ -410,9 +410,10 @@ def download_document_version(
     # Sanitize presentation filename for header
     safe_download_filename = sanitize_filename(version.original_filename)
 
+    actual_size = file_path.stat().st_size
     headers = {
         "Content-Disposition": f'attachment; filename="{safe_download_filename}"',
-        "Content-Length": str(version.file_size_bytes),
+        "Content-Length": str(actual_size),
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
@@ -604,9 +605,10 @@ def preview_document_version(
 
     safe_preview_filename = sanitize_filename(version.original_filename)
 
+    actual_size = file_path.stat().st_size
     headers = {
         "Content-Disposition": f'inline; filename="{safe_preview_filename}"',
-        "Content-Length": str(version.file_size_bytes),
+        "Content-Length": str(actual_size),
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-store",
         "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
