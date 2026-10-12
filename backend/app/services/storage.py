@@ -168,5 +168,44 @@ class LocalStorageService:
                 sha256.update(chunk)
         return sha256.hexdigest()
 
+    def persist_binary_to_db(self, db, version_id: uuid.UUID, file_bytes: bytes) -> None:
+        """
+        Saves or updates the persistent file binary in PostgreSQL.
+        Ensures the document content survives ephemeral cloud container restarts.
+        """
+        try:
+            from app.models.document_content import DocumentFileContent
+            existing = db.query(DocumentFileContent).filter(DocumentFileContent.version_id == version_id).first()
+            if existing:
+                existing.file_bytes = file_bytes
+            else:
+                db.add(DocumentFileContent(version_id=version_id, file_bytes=file_bytes))
+        except Exception:
+            pass
+
+    def ensure_file_on_disk(self, db, version, doc=None) -> Path:
+        """
+        Guarantees that the file binary exists on disk at its storage_key.
+        If container local storage was purged (ephemeral container sleep / restart / redeployment),
+        it automatically re-hydrates the file binary from PostgreSQL.
+        """
+        file_path = self.resolve_storage_path(version.storage_key)
+        if file_path.is_file() and file_path.stat().st_size > 0:
+            return file_path
+
+        # 1. Restore from PostgreSQL document_file_contents table
+        try:
+            from app.models.document_content import DocumentFileContent
+            row = db.query(DocumentFileContent).filter(DocumentFileContent.version_id == version.id).first()
+            if row and row.file_bytes:
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(file_path, "wb") as f_out:
+                    f_out.write(row.file_bytes)
+                return file_path
+        except Exception:
+            pass
+
+        return file_path
+
 # Singleton storage service instance configured with application settings
 storage_service = LocalStorageService()

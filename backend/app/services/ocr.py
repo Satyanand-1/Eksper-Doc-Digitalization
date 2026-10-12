@@ -320,9 +320,9 @@ class TextExtractionService:
         db.refresh(version)
 
         try:
-            # 2. Resolve path through trusted storage containment
+            # 2. Resolve path through trusted storage containment and ensure on disk
             try:
-                resolved_path = self.storage.resolve_storage_path(version.storage_key)
+                resolved_path = self.storage.ensure_file_on_disk(db=db, version=version)
             except StorageSecurityError as e:
                 logger.critical(f"Storage path security containment violation: {e}")
                 raise

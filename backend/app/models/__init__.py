@@ -5,6 +5,7 @@ Exports Base and domain models for Alembic autogeneration and application querie
 from app.database import Base
 from app.models.user import User, UserRole
 from app.models.document import DigitalDocument, DocumentVersion, DocumentStatus, ExtractionStatus
+from app.models.document_content import DocumentFileContent
 from app.models.audit import AuditLog, AuditOutcome
 from app.models.ocr_job import OCRJob, OCRJobStatus
 from app.models.workflow import ReviewWorkflow, ReviewAssignment, WorkflowState, ReviewDecision
@@ -41,6 +42,7 @@ __all__ = [
     "UserRole",
     "DigitalDocument",
     "DocumentVersion",
+    "DocumentFileContent",
     "DocumentStatus",
     "ExtractionStatus",
     "AuditLog",

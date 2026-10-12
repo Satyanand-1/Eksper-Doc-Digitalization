@@ -303,7 +303,7 @@ def retry_ocr_job(
         )
 
     try:
-        storage_path = storage_service.resolve_storage_path(version.storage_key)
+        storage_path = storage_service.ensure_file_on_disk(db=db, version=version)
     except StorageSecurityError as sec_err:
         logger.critical(f"Storage path security anomaly detected: {sec_err}")
         audit_service.log_from_request(

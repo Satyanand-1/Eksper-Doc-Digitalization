@@ -150,6 +150,14 @@ def upload_document(
         db.add(version)
         db.flush()
 
+        # Read staged file bytes for PostgreSQL persistent store
+        try:
+            with open(staged_temp_path, "rb") as f_staged:
+                file_bytes = f_staged.read()
+            storage_service.persist_binary_to_db(db=db, version_id=version.id, file_bytes=file_bytes)
+        except Exception as store_err:
+            logger.warning(f"Failed to persist binary to DB: {store_err}")
+
         # 6. Finalize file into permanent storage
         final_file_path = storage_service.finalize_staged_file(staged_temp_path, storage_key)
         staged_temp_path = None  # Moved successfully
@@ -335,9 +343,9 @@ def download_document_version(
             detail=f"Version {version_number} not found for this document.",
         )
 
-    # 4. Resolve file path safely
+    # 4. Resolve file path safely and ensure content is on disk (auto-restore from DB if cleared)
     try:
-        file_path = storage_service.resolve_storage_path(version.storage_key)
+        file_path = storage_service.ensure_file_on_disk(db=db, version=version, doc=doc)
     except StorageSecurityError as sec_err:
         logger.critical(f"Storage path security anomaly detected: {sec_err}")
         audit_service.log_from_request(
@@ -530,9 +538,9 @@ def preview_document_version(
         )
     preview_content_type = allowed_preview_mimes[clean_mime]
 
-    # 5. Resolve storage path safely
+    # 5. Resolve storage path safely and ensure content is on disk (auto-restore from DB if cleared)
     try:
-        file_path = storage_service.resolve_storage_path(version.storage_key)
+        file_path = storage_service.ensure_file_on_disk(db=db, version=version, doc=doc)
     except StorageSecurityError as sec_err:
         logger.critical(f"Storage path security anomaly detected during preview: {sec_err}")
         audit_service.log_from_request(
@@ -1050,6 +1058,14 @@ def upload_new_version(
         )
         db.add(new_version)
         db.flush()
+
+        # Read staged file bytes for PostgreSQL persistent store
+        try:
+            with open(staged_temp_path, "rb") as f_staged:
+                file_bytes = f_staged.read()
+            storage_service.persist_binary_to_db(db=db, version_id=new_version.id, file_bytes=file_bytes)
+        except Exception as store_err:
+            logger.warning(f"Failed to persist version binary to DB: {store_err}")
 
         # 6. Finalize file into permanent storage
         final_file_path = storage_service.finalize_staged_file(staged_temp_path, storage_key)
