@@ -17,12 +17,26 @@ from app.api.v1.retention import router as retention_router
 from app.api.v1.physical_files import router as physical_files_router
 from app.api.v1.storage_locations import router as storage_locations_router
 
+from contextlib import asynccontextmanager
+
 logger = logging.getLogger("edrms")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure all models and tables exist on startup (including document_file_contents)
+    try:
+        from app.database import engine, Base
+        import app.models  # noqa: F401
+        Base.metadata.create_all(bind=engine)
+    except Exception as exc:
+        logger.warning(f"Metadata create_all notice: {exc}")
+    yield
 
 app = FastAPI(
     title="EDRMS Backend API",
     description="Electronic Document and Records Management System API",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Parse allowed origins from configuration
